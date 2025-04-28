@@ -8,6 +8,7 @@ from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import textwrap
 import html
+from gtts import gTTS  # Import gTTS library
 
 API_KEY = 'ihKVmI9533sGnIIfncdJrtZSeL9zX6xFvU7HKPCElPPHDOdE9I74qPx9'
 edited_file_video = None
@@ -134,7 +135,22 @@ def create_video_with_image(image_url, video_path, text_video, output_name):
             padding_top + new_height + 20
         ))
 
+        # Generate audio with gTTS
+        audio_path = f"{output_name}_audio.mp3"
+        tts = gTTS(text_video, lang='id')  # 'id' for Bahasa Indonesia
+        tts.save(audio_path)
+
+        # Check if the audio file exists
+        if os.path.exists(audio_path):
+            print(f"Audio file saved successfully at: {audio_path}")
+            audio_clip = mp.AudioFileClip(audio_path)
+        else:
+            print(f"Audio file not found: {audio_path}")
+            return
+
         final_video = mp.CompositeVideoClip([clip, img_clip, text_clip])
+        final_video = final_video.set_audio(audio_clip)
+
         final_video.write_videofile(f"{output_name}_final.mp4", codec='libx264', audio_codec='aac')
 
         final_video.close()
@@ -143,6 +159,7 @@ def create_video_with_image(image_url, video_path, text_video, output_name):
         text_clip.close()
         os.remove(image_name)
         os.remove(text_image_path)
+        os.remove(audio_path)
     except Exception as e:
         print(f"Error creating video with image: {e}")
 
