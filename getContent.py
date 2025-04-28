@@ -77,7 +77,7 @@ def download_video(video_url, title, duration):
 
         clip = mp.VideoFileClip(file_name)
         clip = clip.subclip(0, duration)
-        clip = clip.resize(newsize=(720, 1280)).set_fps(30)
+        clip = clip.resize(newsize=(1080, 1920)).set_fps(30)
 
         edited_file = f"edited_{file_name}"
         clip.write_videofile(edited_file, codec='libx264', audio_codec='aac', threads=4, preset='ultrafast', bitrate="3000k", audio_bitrate="128k")
