@@ -222,14 +222,14 @@ def search_video(query, api_key, image_url, title):
         print(f"Error: {response.status_code}")
 
 def get_gossip_news_from_kapanlagi():
-    url = 'https://www.kapanlagi.com/trending/'
+    url = 'https://www.kapanlagi.com/showbiz/'
     response = requests.get(url)
     if response.status_code == 200:
         soup = BeautifulSoup(response.content, 'html.parser')
         articles = soup.find_all('li', class_='tagli')
 
         if articles:
-            for article in articles[:5]:
+            for article in articles:
                 link = article.find('a')['href'] if article.find('a') else 'No Link'
                 title = article.find('img')['alt'] if article.find('img') else 'No Title'
                 title = html.unescape(title)
