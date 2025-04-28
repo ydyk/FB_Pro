@@ -6,53 +6,46 @@ from bs4 import BeautifulSoup
 import json
 from PIL import Image
 from io import BytesIO
+import html  # Import modul html
+import re  # Import modul re untuk menggunakan regular expression
 
 # Ganti dengan API key Pexels Anda
 API_KEY = 'ihKVmI9533sGnIIfncdJrtZSeL9zX6xFvU7HKPCElPPHDOdE9I74qPx9'
-edited_file_video = ""
 
 # Fungsi untuk mengambil URL gambar dari JSON di halaman artikel KapanLagi
 def fetch_image_from_kapanlagi_article(link):
     try:
+        # Mendapatkan halaman artikel dari KapanLagi
         response = requests.get(link)
         if response.status_code == 200:
             soup = BeautifulSoup(response.content, 'html.parser')
+            
+            # Cari tag <script> yang berisi data JSON
             script_tag = soup.find('script', type='application/ld+json')
-
+            
             if script_tag:
+                # Parse JSON dari tag <script>
                 json_data = json.loads(script_tag.string)
+                
+                # Mengambil URL gambar dari 'image' atau 'thumbnailUrl'
                 if isinstance(json_data, dict) and 'image' in json_data:
-                    return json_data['image']
+                    image_url = json_data['image']
+                    print(f"Image URL found: {image_url}")
+                    return image_url
                 elif isinstance(json_data, list):
                     for item in json_data:
                         if 'image' in item:
-                            return item['image']
+                            image_url = item['image']
+                            print(f"Image URL found: {image_url}")
+                            return image_url
+            print(f"No image found in article: {link}")
+            return None
+        else:
+            print(f"Failed to fetch article: {link}")
             return None
     except Exception as e:
-        print(f"Error fetching image: {e}")
+        print(f"Error fetching image from article: {e}")
         return None
-
-# Fungsi untuk mengambil gambar-gambar dari artikel gossip
-def get_gossip_images():
-    url = 'https://www.kapanlagi.com/showbiz/'
-    response = requests.get(url)
-    images = []
-
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.content, 'html.parser')
-        articles = soup.find_all('li', class_='tagli')
-
-        for article in articles[:5]:  # Get top 5 articles
-            link = article.find('a')['href'] if article.find('a') else None
-            if link and not link.startswith("http"):
-                link = "https://www.kapanlagi.com" + link
-
-            image_url = fetch_image_from_kapanlagi_article(link)
-            if image_url:
-                image_name = re.sub(r'[\\/*?:"<>|]', "", article.find('img')['alt']) + '.jpg'
-                images.append((image_url, image_name))
-    return images
-
 
 # Fungsi untuk mengunduh video dari URL dan menyimpannya dengan nama file sesuai judul artikel
 def download_video(video_url, title, duration=5):
@@ -82,10 +75,14 @@ def download_video(video_url, title, duration=5):
     except Exception as e:
         print(f"Error downloading video: {e}")
         return None
-
+        
 # Fungsi untuk membuat video terpisah dengan gambar sebagai overlay di atas video
 def create_video_with_image(image_url, video_path, output_name):
     try:
+        # Menghilangkan semua tanda baca dan mengganti spasi dengan '_'
+        output_name = re.sub(r'[^\w\s]', '', output_name)  # Menghapus tanda baca
+        output_name = output_name.replace(" ", "_")  # Mengganti spasi dengan '_'
+        
         # Mengunduh gambar
         img_response = requests.get(image_url)
         img = Image.open(BytesIO(img_response.content))
@@ -111,9 +108,9 @@ def create_video_with_image(image_url, video_path, output_name):
 
     except Exception as e:
         print(f"Error creating video with image: {e}")
-
+        
 # Fungsi untuk mencari video di Pexels dan mengunduhnya
-def search_video(query, api_key, duration=5):
+def search_video(query, api_key, image_url, title, duration=5):
     url = f'https://api.pexels.com/videos/search?query={query}&per_page=1'
     headers = {'Authorization': api_key}
     response = requests.get(url, headers=headers)
@@ -125,9 +122,7 @@ def search_video(query, api_key, duration=5):
             print(f"Found video: {video_url}")
             video_path = download_video(video_url, query, duration)
             if video_path:
-                images = get_gossip_images()
-                for i, (image_url, image_name) in enumerate(images):
-                    create_video_with_image(image_url, video_path, f"{query}_image_{i+1}")
+                create_video_with_image(image_url, video_path, f"{query}_image_{title}")
         else:
             print("No videos found for your query.")
     else:
@@ -138,5 +133,49 @@ def search_video(query, api_key, duration=5):
         os.remove(edited_file_video)
         print(f"Removed edited video: {edited_file_video}")
 
-# Memanggil fungsi untuk mencari video dan membuat video terpisah dengan gambar
-search_video('beach', API_KEY)
+def get_gossip_news_from_kapanlagi():
+    url = 'https://www.kapanlagi.com/showbiz/'
+
+    # Mendapatkan halaman HTML dari URL
+    response = requests.get(url)
+    print(f"Status Code: {response.status_code}")  # Memeriksa status kode HTTP
+
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Menemukan semua elemen <li> dengan class "tagli" yang berisi artikel
+        articles = soup.find_all('li', class_='tagli')
+
+        if articles:
+            for article in articles[:5]:  # Menampilkan 5 berita teratas
+                # Mengambil informasi URL dan judul
+                link = article.find('a')['href'] if article.find('a') else 'No Link'
+                title = article.find('img')['alt'] if article.find('img') else 'No Title'
+                
+                # Konversi karakter HTML seperti &#8216; ke karakter biasa
+                title = html.unescape(title)  # Menghilangkan &#8216; dan karakter entitas lainnya
+                
+                # Membuat link absolut jika diperlukan
+                if not link.startswith("http"):
+                    link = "https://www.kapanlagi.com" + link
+
+                # Mengambil gambar dari artikel KapanLagi berdasarkan link artikel
+                image_url = fetch_image_from_kapanlagi_article(link)
+
+                if image_url:
+                    # Memanggil fungsi untuk mencari video dan membuat video terpisah dengan gambar
+                    search_video('beach', API_KEY, image_url, title)
+                else:
+                    print(f"No image found for {title}")
+                
+                # Mencetak hasil
+                print(f"Title: {title}")
+                print(f"Link: {link}")
+                print(f"Image URL: {image_url}\n")
+        else:
+            print("Tidak ada artikel yang ditemukan.")
+    else:
+        print(f"Error: {response.status_code}")
+
+# Memanggil fungsi
+get_gossip_news_from_kapanlagi()
