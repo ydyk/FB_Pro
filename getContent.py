@@ -1,4 +1,5 @@
 import requests
+import random
 import moviepy.editor as mp
 import os
 import re
@@ -11,7 +12,37 @@ import html
 from gtts import gTTS  # Import gTTS library
 
 API_KEY = 'ihKVmI9533sGnIIfncdJrtZSeL9zX6xFvU7HKPCElPPHDOdE9I74qPx9'
-edited_file_video = None
+
+# Daftar kata kunci untuk pencarian video
+video_queries = [
+    'white sandy beach', 'mountain cliffs', 'cool flowing water', 'beautiful forest', 'sunset over the ocean', 
+    'tropical island', 'desert landscape', 'lush green hills', 'rolling meadows', 'rocky shore', 
+    'calm lake', 'crystal clear water', 'snowy mountain peaks', 'waterfall in the forest', 'autumn foliage', 
+    'hidden cave', 'tropical rainforest', 'volcanic island', 'blue lagoon', 'serene river', 
+    'golden beach at dawn', 'desert sunset', 'deep ocean', 'high mountain pass', 'frozen lake',
+    'misty morning', 'clear blue sky', 'starry night sky', 'sand dunes', 'rainforest waterfall',
+    'rolling fog over hills', 'breathtaking canyon', 'peaceful pond', 'colorful coral reef', 'pristine beach',
+    'sunrise over mountains', 'rocky cliffs by the sea', 'majestic glacier', 'lush jungle', 'highland lakes', 
+    'desert oasis', 'tropical sunset', 'peaceful countryside', 'deep green valley', 'snow-capped mountains',
+    'lush green meadows', 'ocean waves crashing', 'green rice terraces', 'flowing stream in the forest', 
+    'sunset over a river', 'icy tundra', 'rolling hills of lavender', 'dense fog in the forest', 'winter wonderland',
+    'hidden waterfall', 'blossoming flowers in spring', 'colorful sunset over ocean', 'clear night sky with stars',
+    'snowy pine forest', 'beautiful mountain village', 'crystal clear pond', 'endless fields of wheat', 'desert rock formations',
+    'misty lake', 'snowstorm in the forest', 'calm coastal cliffs', 'reflective river', 'wildflower fields', 
+    'tropical beach with palm trees', 'waterfall with rainbow', 'vibrant sunset sky', 'ancient stone ruins in nature', 
+    'forest clearing', 'abandoned island', 'mountain ridge view', 'mystical forest', 'secluded beach',
+    'golden sand dunes', 'ocean breeze', 'majestic valley', 'stunning mountain range', 'peaceful riverbank', 
+    'moonlit beach', 'remote mountain village', 'calm alpine lake', 'forest glade', 'dramatic cliffside', 
+    'beautiful vineyard', 'jungle river', 'rocky desert landscape', 'peaceful meadow with flowers', 'rural countryside',
+    'jungle canopy', 'sunset over farmland', 'wildlife in nature', 'mountain lake', 'winding river', 
+    'serene woodland', 'colorful autumn leaves', 'desert night sky', 'tropical forest with mist', 'river through the jungle',
+    'alpine forest', 'stormy beach', 'windy mountain pass', 'swimming in crystal clear water', 'sunset over sand dunes',
+    'quiet rural road', 'rainforest canopy', 'snowy forest path', 'lush tropical forest', 'majestic waterfall',
+    'ocean cliffs at sunrise', 'desert horizon at dusk', 'wild horse in the desert', 'iceberg in the ocean',
+    'high desert plateau', 'foggy beach morning', 'hidden valley', 'bright starry sky', 'windswept beach',
+    'rocky mountain lakes', 'tropical garden', 'serene coastal cliffs', 'sailboat on calm water', 'lush tropical island'
+]
+
 
 def fetch_image_from_kapanlagi_article(link):
     try:
@@ -35,7 +66,6 @@ def fetch_image_from_kapanlagi_article(link):
         return None
 
 def download_video(video_url, title, duration):
-    global edited_file_video
     try:
         valid_filename = re.sub(r'[\\/*?:"<>|]', "", title)
         file_name = f"{valid_filename}.mp4"
@@ -50,7 +80,6 @@ def download_video(video_url, title, duration):
         clip = clip.resize(newsize=(720, 1280)).set_fps(30)
 
         edited_file = f"edited_{file_name}"
-        edited_file_video = edited_file
         clip.write_videofile(edited_file, codec='libx264', audio_codec='aac', threads=4, preset='ultrafast', bitrate="3000k", audio_bitrate="128k")
         clip.close()
         os.remove(file_name)
@@ -118,13 +147,13 @@ def create_video_with_image(image_url, video_path, text_video, audio_path, outpu
 
         img_clip = mp.ImageClip(image_name).set_duration(clip.duration)
         img_width, img_height = img.size
-        padding_top = 80
+        padding_top = 120
         padding_left_right = 50
         new_width = clip.w - 2 * padding_left_right
         new_height = int((new_width / img_width) * img_height)
 
         img_clip = img_clip.resize(newsize=(new_width, new_height))
-        img_clip = img_clip.set_position(('center', padding_top)).set_opacity(0.7).fadein(1)
+        img_clip = img_clip.set_position(('center', padding_top))
 
         text_image_path = f"{output_name}_text.png"
         create_combined_text_image(text_video, text_image_path)
@@ -193,7 +222,7 @@ def search_video(query, api_key, image_url, title):
         print(f"Error: {response.status_code}")
 
 def get_gossip_news_from_kapanlagi():
-    url = 'https://www.kapanlagi.com/showbiz/'
+    url = 'https://www.kapanlagi.com/trending/'
     response = requests.get(url)
     if response.status_code == 200:
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -210,8 +239,11 @@ def get_gossip_news_from_kapanlagi():
 
                 image_url = fetch_image_from_kapanlagi_article(link)
 
+                # Choose a random query from the list
+                query = random.choice(video_queries)
+
                 if image_url:
-                    search_video('beach', API_KEY, image_url, title)
+                    search_video(query, API_KEY, image_url, title)
                 else:
                     print(f"No image found for {title}")
 
