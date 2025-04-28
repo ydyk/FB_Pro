@@ -34,7 +34,7 @@ def fetch_image_from_kapanlagi_article(link):
         print(f"Error fetching image from article: {e}")
         return None
 
-def download_video(video_url, title, duration=5):
+def download_video(video_url, title, duration):
     global edited_file_video
     try:
         valid_filename = re.sub(r'[\\/*?:"<>|]', "", title)
@@ -105,7 +105,7 @@ def create_combined_text_image(text, output_path, font_size=40, spacing_between_
 
     combined_img.save(output_path)
 
-def create_video_with_image(image_url, video_path, text_video, output_name):
+def create_video_with_image(image_url, video_path, text_video, audio_path, output_name):
     try:
         output_name = re.sub(r'[^\w\s]', '', output_name).replace(" ", "_")
 
@@ -134,20 +134,8 @@ def create_video_with_image(image_url, video_path, text_video, output_name):
             ('center'),
             padding_top + new_height + 20
         ))
-
-        # Generate audio with gTTS
-        audio_path = f"{output_name}_audio.mp3"
-        tts = gTTS(text_video, lang='id')  # 'id' for Bahasa Indonesia
-        tts.save(audio_path)
-
-        # Check if the audio file exists
-        if os.path.exists(audio_path):
-            print(f"Audio file saved successfully at: {audio_path}")
-            audio_clip = mp.AudioFileClip(audio_path)
-        else:
-            print(f"Audio file not found: {audio_path}")
-            return
-
+        
+        audio_clip = mp.AudioFileClip(audio_path)
         final_video = mp.CompositeVideoClip([clip, img_clip, text_clip])
         final_video = final_video.set_audio(audio_clip)
 
@@ -163,7 +151,7 @@ def create_video_with_image(image_url, video_path, text_video, output_name):
     except Exception as e:
         print(f"Error creating video with image: {e}")
 
-def search_video(query, api_key, image_url, title, duration=5):
+def search_video(query, api_key, image_url, title):
     url = f'https://api.pexels.com/videos/search?query={query}&per_page=1'
     headers = {'Authorization': api_key}
     response = requests.get(url, headers=headers)
@@ -172,9 +160,29 @@ def search_video(query, api_key, image_url, title, duration=5):
         data = response.json()
         if data['videos']:
             video_url = data['videos'][0]['video_files'][0]['link']
-            video_path = download_video(video_url, title, duration)
+            
+            # Generate audio with gTTS
+            output_name = title
+            output_name = re.sub(r'[^\w\s]', '', output_name).replace(" ", "_")
+            audio_path = f"{output_name}_audio.mp3"
+            tts = gTTS(title, lang='id')  # 'id' for Bahasa Indonesia
+            tts.save(audio_path)
+            audio_duration = 5
+            # Check if the audio file exists
+            if os.path.exists(audio_path):
+                print(f"Audio file saved successfully at: {audio_path}")
+                audio_clip = mp.AudioFileClip(audio_path)
+                audio_duration = audio_clip.duration  # Get duration of the audio
+                audio_clip.close()
+                print(f"Audio duration: {audio_duration} seconds")
+            else:
+                print(f"Audio file not found: {audio_path}")
+                return
+            
+            # Download video and adjust the duration based on the audio duration
+            video_path = download_video(video_url, title, audio_duration)
             if video_path:
-                create_video_with_image(image_url, video_path, title, f"{query}_image_{title}")
+                create_video_with_image(image_url, video_path, title, audio_path, f"{query}_image_{title}")
                 try:
                     os.remove(video_path)
                 except Exception as e:
