@@ -59,25 +59,6 @@ def download_image(image_url, title):
         print(f"Error downloading image: {e}")
         return None
 
-# Fungsi untuk mengedit gambar (misalnya menambahkan teks) dan menyimpannya dengan nama yang sesuai judul artikel
-def edit_image(img, text, file_name):
-    try:
-        # Menambahkan teks ke gambar
-        draw = ImageDraw.Draw(img)
-        
-        # Menggunakan font default (bisa mengganti dengan file font lain jika perlu)
-        font = ImageFont.load_default()
-        
-        # Menambahkan teks ke gambar di posisi tertentu
-        draw.text((10, 10), text, font=font, fill="white")
-        
-        # Menyimpan gambar yang sudah diedit dengan nama yang sesuai judul artikel
-        edited_file_name = f"edited_{file_name}"
-        img.save(edited_file_name)
-        print(f"Image edited and saved as '{edited_file_name}'.")
-    except Exception as e:
-        print(f"Error editing image: {e}")
-
 def get_gossip_news_from_kapanlagi():
     url = 'https://www.kapanlagi.com/showbiz/'
 
@@ -107,11 +88,6 @@ def get_gossip_news_from_kapanlagi():
                 if image_url:
                     # Mengunduh gambar dengan nama sesuai judul artikel
                     downloaded_file = download_image(image_url, title)
-                    
-                    if downloaded_file:
-                        # Mengedit gambar dengan menambahkan teks (misalnya, judul artikel)
-                        img = Image.open(downloaded_file)
-                        edit_image(img, title, downloaded_file)
                 else:
                     print(f"No image found for {title}")
                 
