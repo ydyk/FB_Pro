@@ -10,3 +10,4 @@ Teks harus mencakup:
 5. Batasi teks agar tetap singkat dan padat (maksimal 120 karakter).
 6. Sertakan ajakan untuk berinteraksi atau membagikan konten, seperti "Ceritakan pendapatmu di komentar!" atau "Jangan lupa bagikan!".
 7. Jangan sertakan hashtag.
+8. Jangan mengandung kata-kata yang dilarang di facebook

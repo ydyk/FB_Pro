@@ -12,6 +12,11 @@ import html
 from gtts import gTTS  # Import gTTS library
 
 API_KEY = 'ihKVmI9533sGnIIfncdJrtZSeL9zX6xFvU7HKPCElPPHDOdE9I74qPx9'
+# API Key Gemini
+API_KEY_GEMINI = "AIzaSyDOltdythGzcfMH4cqKPsJEz7813keq5nw"
+
+# URL endpoint untuk model Gemini
+url_gemini = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key={API_KEY_GEMINI}"
 
 # Daftar kata kunci untuk pencarian video
 video_queries = [
@@ -43,6 +48,38 @@ video_queries = [
     'rocky mountain lakes', 'tropical garden', 'serene coastal cliffs', 'sailboat on calm water', 'lush tropical island'
 ]
 
+def generate_reel_text(judul_berita, api_key):
+    # URL endpoint untuk model Gemini
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+
+    # Data yang akan dikirim dalam permintaan POST, dengan prompt yang lebih lengkap
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {
+                        "text": f"Tuliskan teks singkat dan menarik untuk video Reel berdasarkan judul berita berikut:\n\n{judul_berita}\n\nTeks harus mencakup:\n1. Ringkasan singkat tentang inti berita.\n2. Poin penting yang menjelaskan cerita lebih lanjut.\n3. Elemen yang membangkitkan rasa penasaran audiens.\n4. Gunakan gaya bahasa yang menarik dan cocok untuk platform sosial media seperti Facebook, Instagram, atau Twitter.\n5. Batasi teks agar tetap singkat dan padat (maksimal 120 karakter).\n6. Sertakan ajakan untuk berinteraksi atau membagikan konten, seperti 'Ceritakan pendapatmu di komentar!' atau 'Jangan lupa bagikan!'.\n7. Jangan sertakan hashtag.\n8. Jangan mengandung kata-kata yang dilarang di facebook."
+                    }
+                ]
+            }
+        ]
+    }
+
+    # Header yang diperlukan
+    headers = {
+        "Content-Type": "application/json"
+    }
+
+    # Mengirim permintaan POST
+    response = requests.post(url, headers=headers, data=json.dumps(payload))
+
+    # Mengecek status dan mengembalikan teks yang dihasilkan jika sukses
+    if response.status_code == 200:
+        # Mengambil hanya teks dari respons
+        generated_text = response.json()['candidates'][0]['content']['parts'][0]['text']
+        return generated_text
+    else:
+        return f"Error: {response.status_code}, {response.text}"
 
 def fetch_image_from_kapanlagi_article(link):
     try:
@@ -67,7 +104,7 @@ def fetch_image_from_kapanlagi_article(link):
 
 def download_video(video_url, title, duration):
     try:
-        valid_filename = re.sub(r'[\\/*?:"<>|]', "", title)
+        valid_filename = re.sub(r'[\\/*?:"<>|]', "", title).replace(" ", "_").replace("\n", "_")
         file_name = f"{valid_filename}.mp4"
         video_response = requests.get(video_url)
         video_response.raise_for_status()
@@ -88,7 +125,7 @@ def download_video(video_url, title, duration):
         print(f"Error downloading video: {e}")
         return None
 
-def create_text_block(text, font, line_spacing=10, highlight_padding=10, radius=10):
+def create_text_block(text, font, line_spacing=16, highlight_padding=10, radius=10):
     lines = []
     for paragraph in text.split('\n'):
         wrapped = textwrap.wrap(paragraph, width=30)
@@ -112,15 +149,15 @@ def create_text_block(text, font, line_spacing=10, highlight_padding=10, radius=
 
     return img
 
-def create_combined_text_image(text, output_path, font_size=40, spacing_between_blocks=20):
-    font_path = "arial.ttf"
+def create_combined_text_image(text, output_path, font_size=60, spacing_between_blocks=30):
+    font_path = "C:/Windows/Fonts/seguiemj.ttf"  # Contoh di Windows untuk font Segoe UI Emoji
     try:
         font = ImageFont.truetype(font_path, font_size)
     except:
         font = ImageFont.load_default()
 
     text_blocks = text.split('\n\n')
-    block_images = [create_text_block(block.strip(), font) for block in text_blocks if block.strip()]
+    block_images = [create_text_block(block.strip(), font, line_spacing=20) for block in text_blocks if block.strip()]
 
     total_height = sum(img.height for img in block_images) + spacing_between_blocks * (len(block_images) - 1)
     max_width = max(img.width for img in block_images)
@@ -134,9 +171,10 @@ def create_combined_text_image(text, output_path, font_size=40, spacing_between_
 
     combined_img.save(output_path)
 
+
 def create_video_with_image(image_url, video_path, text_video, audio_path, output_name):
     try:
-        output_name = re.sub(r'[^\w\s]', '', output_name).replace(" ", "_")
+        output_name = re.sub(r'[^\w\s]', '', output_name).replace(" ", "_").replace("\n", "_")
 
         img_response = requests.get(image_url)
         img = Image.open(BytesIO(img_response.content))
@@ -192,7 +230,7 @@ def search_video(query, api_key, image_url, title):
             
             # Generate audio with gTTS
             output_name = title
-            output_name = re.sub(r'[^\w\s]', '', output_name).replace(" ", "_")
+            output_name = re.sub(r'[^\w\s]', '', output_name).replace(" ", "_").replace("\n", "_")
             audio_path = f"{output_name}_audio.mp3"
             tts = gTTS(title, lang='id')  # 'id' for Bahasa Indonesia
             tts.save(audio_path)
@@ -224,6 +262,7 @@ def search_video(query, api_key, image_url, title):
 def get_gossip_news_from_kapanlagi():
     url = 'https://www.kapanlagi.com/showbiz/'
     response = requests.get(url)
+    
     if response.status_code == 200:
         soup = BeautifulSoup(response.content, 'html.parser')
         articles = soup.find_all('li', class_='tagli')
@@ -239,11 +278,25 @@ def get_gossip_news_from_kapanlagi():
 
                 image_url = fetch_image_from_kapanlagi_article(link)
 
-                # Choose a random query from the list
+                # Pilih query acak dari daftar
                 query = random.choice(video_queries)
 
                 if image_url:
-                    search_video(query, API_KEY, image_url, title)
+                    try:
+                        # Menyusun teks untuk reel
+                        generated_text = generate_reel_text(title, API_KEY_GEMINI)
+                        
+                        # Mengecek apakah generate_reel_text berhasil mengembalikan teks
+                        if "Error" not in generated_text:  # Pastikan tidak ada error di teks yang dihasilkan
+                            search_video(query, API_KEY, image_url, generated_text)
+                        else:
+                            print(f"Error generating reel text for {title}: {generated_text}. Skipping this article.")
+                            continue  # Skip ke artikel berikutnya
+                    except Exception as e:
+                        # Menangani error jika terjadi exception di generate_reel_text
+                        print(f"Exception occurred while generating text for {title}: {e}. Skipping this article.")
+                        continue  # Skip ke artikel berikutnya
+                
                 else:
                     print(f"No image found for {title}")
 
